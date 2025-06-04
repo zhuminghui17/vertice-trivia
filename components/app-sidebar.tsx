@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from "react"
-import { Brain, Trophy, User, ChevronUp, LogOut, Home } from "lucide-react"
+import { Brain, Trophy, User, ChevronUp, LogOut, Home, BarChart,CalendarDays } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 
 import {
@@ -29,15 +30,15 @@ import { signOut } from "@/lib/auth"
 // Menu items for navigation
 const items = [
   {
-    title: "Trivia",
+    title: "Today's Trivia",
     url: "/",
-    icon: Brain,
+    icon: CalendarDays,
     description: "Play trivia questions"
   },
   {
     title: "Leaderboard",
     url: "/leaderboard", 
-    icon: Trophy,
+    icon: BarChart,
     description: "View top players"
   },
 ]
@@ -78,7 +79,8 @@ export function AppSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Brain className="size-4" />
+                  {/* <Brain className="size-4" /> // use vertice logo */}
+                  <Image src="/vertice-log.png" alt="Vertice Logo" width={32} height={32} className="rounded" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Vertice Trivia</span>

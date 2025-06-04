@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { TriviaInterface } from "@/components/trivia-interface"
+import { CalendarDays } from "lucide-react"
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -20,7 +21,10 @@ export default function Home() {
     <div className="p-6">
       {/* Page Header */}
       <div className="mb-8 max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">🧠 Vertice Trivia</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+          <CalendarDays className="size-10" />
+          Vertice Trivia
+        </h1> 
         <p className="text-gray-600">Test your knowledge and compete with others!</p>
       </div>
 
