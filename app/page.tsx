@@ -113,6 +113,18 @@ export default function Home() {
   return (
     <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <div className="max-w-4xl mx-auto">
+        {/* Header Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">🧠 Trivia Challenge</h1>
+          {user && (
+            <Link href="/leaderboard">
+              <Button variant="outline">
+                🏆 View Leaderboard
+              </Button>
+            </Link>
+          )}
+        </div>
+
         {/* Auth Status */}
         <div className="bg-gray-50 rounded-lg p-4 mb-8">
           {user ? (
@@ -139,10 +151,6 @@ export default function Home() {
         {/* Trivia Section - Only show if logged in */}
         {user ? (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">
-              🧠 Trivia Challenge
-            </h1>
-            
             <div className="max-w-2xl mx-auto">
               {/* Question */}
               <div className="mb-6">
@@ -206,6 +214,15 @@ export default function Home() {
                   </p>
                 </div>
               )}
+
+              {/* Navigation to Leaderboard */}
+              <div className="text-center mt-6">
+                <Link href="/leaderboard">
+                  <Button variant="secondary" size="lg">
+                    🏆 Check Leaderboard
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         ) : (
