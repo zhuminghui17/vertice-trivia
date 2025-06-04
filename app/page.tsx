@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
-import { signOut } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 
@@ -21,14 +19,6 @@ export default function Home() {
     question: "What is the capital of France?",
     correctAnswer: "Paris",
     points: 10
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
   };
 
   const handleSubmitAnswer = async (e: React.FormEvent) => {
@@ -104,53 +94,31 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="max-w-4xl mx-auto">
-        {/* Header Navigation */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">🧠 Trivia Challenge</h1>
-          {user && (
-            <Link href="/leaderboard">
-              <Button variant="outline">
-                🏆 View Leaderboard
-              </Button>
-            </Link>
-          )}
-        </div>
+    <div className="p-6 max-w-4xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">🧠 Vertice Trivia</h1>
+        <p className="text-gray-600">Test your knowledge and compete with others!</p>
+      </div>
 
-        {/* Auth Status */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-8">
-          {user ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 font-medium">✅ Logged in as:</p>
-                <p className="text-sm text-gray-600">{user.email}</p>
-                <p className="text-xs text-gray-500">ID: {user.id}</p>
-              </div>
-              <Button onClick={handleSignOut} variant="outline">
-                Sign Out
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-gray-600">Not logged in</p>
-              <Link href="/login">
-                <Button>Sign In</Button>
-              </Link>
-            </div>
-          )}
-        </div>
+      {user ? (
+        <div className="space-y-6">
+          {/* Welcome Card */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800">
+              <strong>Welcome back, {user.email}!</strong> Ready for some trivia?
+            </p>
+          </div>
 
-        {/* Trivia Section - Only show if logged in */}
-        {user ? (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          {/* Trivia Section */}
+          <div className="bg-white rounded-lg shadow-md p-6">
             <div className="max-w-2xl mx-auto">
               {/* Question */}
               <div className="mb-6">
@@ -215,7 +183,7 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Navigation to Leaderboard */}
+              {/* Quick Navigation to Leaderboard */}
               <div className="text-center mt-6">
                 <Link href="/leaderboard">
                   <Button variant="secondary" size="lg">
@@ -225,13 +193,15 @@ export default function Home() {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              🧠 Welcome to Trivia Challenge
-            </h1>
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <div className="max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Welcome to Trivia Challenge!
+            </h2>
             <p className="text-gray-600 mb-6">
-              Please sign in to start playing trivia questions!
+              Sign in to start playing trivia questions and compete for the top spot on the leaderboard.
             </p>
             <Link href="/login">
               <Button size="lg">
@@ -239,13 +209,8 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-        )}
-
-        {/* Footer Info */}
-        <footer className="text-center text-sm text-gray-500 mt-12">
-          <p>Built with Next.js, Supabase, and Tailwind CSS</p>
-        </footer>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

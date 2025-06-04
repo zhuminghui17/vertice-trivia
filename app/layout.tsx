@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/components/auth-provider";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth-provider";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +31,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {children}
+          <SidebarProvider>
+            <AppSidebar />
+            <main className="flex flex-1 flex-col">
+              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <div className="flex-1" />
+              </header>
+              <div className="flex-1 overflow-auto">
+                {children}
+              </div>
+            </main>
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>
