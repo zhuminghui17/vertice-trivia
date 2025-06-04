@@ -114,7 +114,7 @@ export default function Leaderboard() {
         </Card>
       )}
 
-      {/* Back to Game */}
+      {/* Back to Game
       {!loading && !error && scores.length > 0 && (
         <div className="text-center mt-8">
           <Link href="/">
@@ -123,7 +123,7 @@ export default function Leaderboard() {
             </Button>
           </Link>
         </div>
-      )}
+      )} */}
     </div>
   )
 } 
