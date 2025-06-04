@@ -8,82 +8,39 @@ import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
 // Timer configuration (in seconds)
-const QUIZ_TIMER_SECONDS = 60 // 2 minutes - easily configurable
+const QUIZ_TIMER_SECONDS = 60 // 1 minute - easily configurable
 
 // Types for our trivia system
 interface TriviaQuestion {
-  id: number
+  id: string
   question: string
   options: string[]
   correctAnswer: string
   category: string
-  points: number
 }
-
-// 5 questions from different categories
-const triviaQuestions: TriviaQuestion[] = [
-  {
-    id: 1,
-    question: "What is the capital of Australia?",
-    options: ["Sydney", "Melbourne", "Canberra", "Perth"],
-    correctAnswer: "Canberra",
-    category: "Geography",
-    points: 20
-  },
-  {
-    id: 2,
-    question: "Which company developed the React JavaScript library?",
-    options: ["Google", "Facebook/Meta", "Microsoft", "Apple"],
-    correctAnswer: "Facebook/Meta",
-    category: "Technology",
-    points: 20
-  },
-  {
-    id: 3,
-    question: "In which year did World War II end?",
-    options: ["1944", "1945", "1946", "1947"],
-    correctAnswer: "1945",
-    category: "History",
-    points: 20
-  },
-  {
-    id: 4,
-    question: "What is the chemical symbol for Gold?",
-    options: ["Go", "Gd", "Au", "Ag"],
-    correctAnswer: "Au",
-    category: "Science",
-    points: 20
-  },
-  {
-    id: 5,
-    question: "Which planet is known as the 'Red Planet'?",
-    options: ["Venus", "Jupiter", "Mars", "Saturn"],
-    correctAnswer: "Mars",
-    category: "Astronomy",
-    points: 20
-  }
-]
 
 interface TriviaInterfaceProps {
   user: any
 }
 
 export function TriviaInterface({ user }: TriviaInterfaceProps) {
-  const [answers, setAnswers] = useState<{[key: number]: string}>({})
+  const [gameState, setGameState] = useState<'waiting' | 'loading' | 'playing' | 'complete'>('waiting')
+  const [questions, setQuestions] = useState<TriviaQuestion[]>([])
+  const [answers, setAnswers] = useState<{[key: string]: string}>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isComplete, setIsComplete] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState(QUIZ_TIMER_SECONDS)
   const [timerExpired, setTimerExpired] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<{
     score: number
     correctAnswers: number
-    feedback: {questionId: number, isCorrect: boolean, correctAnswer: string}[]
+    feedback: {questionId: string, isCorrect: boolean, correctAnswer: string}[]
     timeExpired?: boolean
   } | null>(null)
 
-  // Timer effect
+  // Timer effect - only runs when playing
   useEffect(() => {
-    if (isComplete || timeRemaining <= 0) return
+    if (gameState !== 'playing' || timeRemaining <= 0) return
 
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
@@ -96,14 +53,14 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [timeRemaining, isComplete])
+  }, [timeRemaining, gameState])
 
   // Auto-submit when timer expires
   useEffect(() => {
-    if (timerExpired && !isComplete && !isSubmitting) {
+    if (timerExpired && gameState === 'playing' && !isSubmitting) {
       handleFinalSubmit(true) // Pass true to indicate timer expiry
     }
-  }, [timerExpired, isComplete, isSubmitting])
+  }, [timerExpired, gameState, isSubmitting])
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
@@ -117,8 +74,57 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
     return 'text-red-600' // Red when ≤30 sec
   }
 
-  const handleAnswerSelect = (questionId: number, answer: string) => {
-    if (isComplete || timerExpired) return
+  const startTodaysTrivia = async () => {
+    setGameState('loading')
+    setError(null)
+    
+    try {
+      // First, try to fetch today's questions
+      const response = await fetch('/api/todays-questions')
+      const data = await response.json()
+      
+      if (data.success) {
+        // Questions exist, start the game
+        setQuestions(data.questions)
+        setGameState('playing')
+        setTimeRemaining(QUIZ_TIMER_SECONDS)
+        setTimerExpired(false)
+        return
+      }
+      
+      // No questions found, generate new ones
+      console.log('No questions found, generating new ones...')
+      const generateResponse = await fetch('/api/generate-questions', {
+        method: 'POST'
+      })
+      const generateData = await generateResponse.json()
+      
+      if (!generateData.success) {
+        throw new Error(generateData.error || generateData.message || 'Failed to generate questions')
+      }
+      
+      // Fetch the newly generated questions
+      const newQuestionsResponse = await fetch('/api/todays-questions')
+      const newQuestionsData = await newQuestionsResponse.json()
+      
+      if (!newQuestionsData.success) {
+        throw new Error('Failed to fetch generated questions')
+      }
+      
+      setQuestions(newQuestionsData.questions)
+      setGameState('playing')
+      setTimeRemaining(QUIZ_TIMER_SECONDS)
+      setTimerExpired(false)
+      
+    } catch (err) {
+      console.error('Error starting trivia:', err)
+      setError(err instanceof Error ? err.message : 'Failed to start trivia')
+      setGameState('waiting')
+    }
+  }
+
+  const handleAnswerSelect = (questionId: string, answer: string) => {
+    if (gameState !== 'playing' || timerExpired) return
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -126,9 +132,10 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
   }
 
   const handleFinalSubmit = async (autoSubmit = false) => {
-    if (isSubmitting || isComplete) return
+    if (isSubmitting || gameState !== 'playing') return
 
     setIsSubmitting(true)
+    setGameState('complete')
 
     try {
       let totalScore = 0
@@ -136,12 +143,12 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
       const feedback = []
 
       // Calculate score and prepare feedback
-      for (const question of triviaQuestions) {
+      for (const question of questions) {
         const userAnswer = answers[question.id]
         const isCorrect = userAnswer === question.correctAnswer
         
         if (isCorrect) {
-          totalScore += question.points
+          totalScore += 1 // 1 point per correct answer
           correctCount += 1
         }
 
@@ -160,7 +167,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
           user_name: user.email || 'Unknown',
           score: totalScore,
           games_played: 1,
-          games_won: correctCount === triviaQuestions.length ? 1 : 0,
+          games_won: correctCount === questions.length ? 1 : 0,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
@@ -168,18 +175,18 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
 
       if (error) throw error
 
-      // Set results and mark as complete
+      // Set results
       setResults({
         score: totalScore,
         correctAnswers: correctCount,
         feedback,
         timeExpired: autoSubmit
       })
-      setIsComplete(true)
 
     } catch (err) {
       console.error('Error submitting trivia:', err)
       alert('Error saving your answers. Please try again.')
+      setGameState('playing') // Allow retry
     } finally {
       setIsSubmitting(false)
     }
@@ -191,12 +198,61 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
       'Technology': 'bg-purple-100 text-purple-800',
       'History': 'bg-amber-100 text-amber-800',
       'Science': 'bg-green-100 text-green-800',
-      'Astronomy': 'bg-indigo-100 text-indigo-800'
+      'Astronomy': 'bg-indigo-100 text-indigo-800',
+      'Sports': 'bg-red-100 text-red-800',
+      'Entertainment': 'bg-pink-100 text-pink-800'
     }
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
-  if (isComplete && results) {
+  // Waiting state - show start button
+  if (gameState === 'waiting') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Welcome, {user.email}!</CardTitle>
+            <CardDescription>
+              Ready to test your knowledge? Click below to start today's trivia challenge!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <strong>Error:</strong> {error}
+              </div>
+            )}
+            <Button 
+              onClick={startTodaysTrivia}
+              size="lg"
+              className="w-full"
+            >
+              🎯 Start Today's Trivia
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (gameState === 'loading') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-600">Generating today's trivia questions...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Results state
+  if (gameState === 'complete' && results) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Results Summary */}
@@ -206,7 +262,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
               {results.timeExpired ? '⏰ Time Up!' : '🎉 Quiz Complete!'}
             </CardTitle>
             <CardDescription className="text-lg">
-              You scored <strong>{results.score}</strong> points ({results.correctAnswers}/{triviaQuestions.length} correct)
+              You scored <strong>{results.score}</strong> points ({results.correctAnswers}/{questions.length} correct)
               {results.timeExpired && (
                 <div className="mt-2 text-amber-600">
                   <strong>Note:</strong> Quiz was auto-submitted when time expired
@@ -218,7 +274,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
 
         {/* Detailed Results */}
         <div className="grid gap-4">
-          {triviaQuestions.map((question, index) => {
+          {questions.map((question, index) => {
             const userAnswer = answers[question.id]
             const feedback = results.feedback.find(f => f.questionId === question.id)
             const isCorrect = feedback?.isCorrect || false
@@ -238,7 +294,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
                       {!wasAnswered ? (
                         <span className="text-gray-500 font-semibold">⏸ Not Answered</span>
                       ) : isCorrect ? (
-                        <span className="text-green-600 font-semibold">✓ Correct (+{question.points} pts)</span>
+                        <span className="text-green-600 font-semibold">✓ Correct (+1 pt)</span>
                       ) : (
                         <span className="text-red-600 font-semibold">✗ Incorrect</span>
                       )}
@@ -280,7 +336,8 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
     )
   }
 
-  const allQuestionsAnswered = Object.keys(answers).length === triviaQuestions.length
+  // Playing state
+  const allQuestionsAnswered = Object.keys(answers).length === questions.length
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -290,7 +347,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
           <div className="flex justify-between items-center mb-4">
             <div></div> {/* Spacer */}
             <div className="text-center">
-              <CardTitle className="text-2xl">Welcome, {user.email}!</CardTitle>
+              <CardTitle className="text-2xl">Today's Trivia</CardTitle>
             </div>
             <div className="text-right">
               <div className="text-xs text-gray-500 mb-1">Time Left</div>
@@ -300,7 +357,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
             </div>
           </div>
           <CardDescription>
-            Answer all 5 questions below, then submit to see your results. Each correct answer is worth 20 points.
+            Answer all {questions.length} questions below, then submit to see your results. Each correct answer is worth 1 point.
             {timeRemaining <= 30 && timeRemaining > 0 && (
               <div className="text-xs text-amber-600 mt-2">
                 ⚠️ Quiz will auto-submit when time expires
@@ -313,27 +370,27 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
       {/* Progress */}
       <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
         <span className="text-sm font-medium text-blue-800">
-          Progress: {Object.keys(answers).length}/{triviaQuestions.length} questions answered
+          Progress: {Object.keys(answers).length}/{questions.length} questions answered
         </span>
         <div className="text-sm text-blue-600">
-          Potential Score: {triviaQuestions.length * 20} points
+          Potential Score: {questions.length} points
         </div>
       </div>
 
       {/* All Questions */}
       <div className="grid gap-6">
-        {triviaQuestions.map((question, index) => (
+        {questions.map((question, index) => (
           <Card key={question.id} className="w-full">
             <CardHeader>
               <div className="flex justify-between items-start mb-2">
                 <Badge variant="outline" className={getCategoryColor(question.category)}>
                   {question.category}
                 </Badge>
-                <span className="text-sm text-gray-500">Question {index + 1}/5</span>
+                <span className="text-sm text-gray-500">Question {index + 1}/{questions.length}</span>
               </div>
               <CardTitle className="text-xl">{question.question}</CardTitle>
               <CardDescription>
-                Select your answer. Worth {question.points} points.
+                Select your answer. Worth 1 point.
               </CardDescription>
             </CardHeader>
             
@@ -367,7 +424,7 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
           >
             {isSubmitting ? 'Submitting Quiz...' : 
              timerExpired ? 'Time Expired - Auto Submitted' :
-             `Submit All Answers (${Object.keys(answers).length}/${triviaQuestions.length})`}
+             `Submit All Answers (${Object.keys(answers).length}/${questions.length})`}
           </Button>
         </CardFooter>
       </Card>
