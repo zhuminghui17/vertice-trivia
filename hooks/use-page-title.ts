@@ -1,5 +1,5 @@
 import { usePathname } from 'next/navigation'
-import { CalendarDays, BarChart, User, Home } from 'lucide-react'
+import { CalendarDays, BarChart, User, School } from 'lucide-react'
 
 export const usePageTitle = () => {
   const pathname = usePathname()
@@ -28,7 +28,7 @@ export const usePageTitle = () => {
         return {
           title: 'Question Bank',
           description: 'Browse past questions', 
-          icon: Home
+          icon: School
         }
       default:
         return {
