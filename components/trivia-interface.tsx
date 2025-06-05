@@ -21,9 +21,10 @@ interface TriviaQuestion {
 
 interface TriviaInterfaceProps {
   user: any
+  isAdmin?: boolean
 }
 
-export function TriviaInterface({ user }: TriviaInterfaceProps) {
+export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps) {
   const [gameState, setGameState] = useState<'waiting' | 'loading' | 'playing' | 'complete'>('waiting')
   const [questions, setQuestions] = useState<TriviaQuestion[]>([])
   const [answers, setAnswers] = useState<{[key: string]: string}>({})
@@ -94,8 +95,20 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
       
       // No questions found, generate new ones
       console.log('No questions found, generating new ones...')
+      
+      // Get auth token for admin verification
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const generateResponse = await fetch('/api/generate-questions', {
-        method: 'POST'
+        method: 'POST',
+        headers
       })
       const generateData = await generateResponse.json()
       
@@ -211,15 +224,26 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
       <div className="max-w-2xl mx-auto space-y-6">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome, {user.email}!</CardTitle>
+            <CardTitle className="text-md">
+              Welcome, {user.email}!
+              {isAdmin && <Badge className="ml-2 bg-purple-100 text-purple-800">Admin</Badge>}
+            </CardTitle>
             <CardDescription>
-              Ready to test your knowledge? Click below to start today's trivia challenge!
+              {isAdmin 
+                ? "As an admin, you can start today's trivia game or generate new questions if none exist yet."
+                : "Ready to test your knowledge? Click below to start today's trivia challenge!"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
               <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                 <strong>Error:</strong> {error}
+                {!isAdmin && error.includes('Forbidden') && (
+                  <p className="mt-2 text-sm">
+                    Only administrators can generate new trivia games. Please wait for an admin to create today's questions.
+                  </p>
+                )}
               </div>
             )}
             <Button 
@@ -227,8 +251,13 @@ export function TriviaInterface({ user }: TriviaInterfaceProps) {
               size="lg"
               className="w-full"
             >
-              🎯 Start Today's Trivia
+              🎯 {isAdmin ? 'Start/Generate Today\'s Trivia' : 'Start Today\'s Trivia'}
             </Button>
+            {isAdmin && (
+              <p className="text-sm text-gray-600 text-center mt-2">
+                If no questions exist for today, this will automatically generate new ones using AI.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
