@@ -52,14 +52,6 @@ export default function Leaderboard() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🏆 Leaderboard
-        </h1>
-        <p className="text-gray-600">See how you rank against other players</p>
-      </div>
-
       {/* Loading State */}
       {loading && (
         <Card>
