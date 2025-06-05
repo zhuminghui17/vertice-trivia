@@ -81,7 +81,7 @@ export function AppSidebar() {
               <Link href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   {/* <Brain className="size-4" /> // use vertice logo */}
-                  <Image src="/vertice-log.png" alt="Vertice Logo" width={32} height={32} className="rounded" />
+                  <Image src="/vertice-logo.png" alt="Vertice Logo" width={32} height={32} className="rounded" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Vertice Trivia</span>
