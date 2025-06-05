@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from "react"
-import { User, ChevronUp, LogOut, Home, Shield, CalendarDays, BarChart } from "lucide-react"
+import { User, ChevronUp, LogOut, School, Shield, CalendarDays, BarChart } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -42,6 +42,12 @@ const items = [
     icon: BarChart,
     description: "View top players"
   },
+  {
+    title: "Question Bank",
+    url: "/questions", 
+    icon: School,
+    description: "Browse past questions"
+  },
 ]
 
 // Future items to be added
@@ -51,12 +57,6 @@ const comingSoonItems = [
     url: "#",
     icon: User,
     description: "Your game history"
-  },
-  {
-    title: "Question Bank",
-    url: "#", 
-    icon: Home,
-    description: "Browse past questions"
   },
 ]
 
