@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from "react"
-import { Brain, Trophy, User, ChevronUp, LogOut, Home, BarChart,CalendarDays } from "lucide-react"
+import { User, ChevronUp, LogOut, Home, Shield, CalendarDays, BarChart } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
 import { signOut } from "@/lib/auth"
 
@@ -60,7 +61,7 @@ const comingSoonItems = [
 ]
 
 export function AppSidebar() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const pathname = usePathname()
 
   const handleSignOut = async () => {
@@ -149,10 +150,11 @@ export function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <User className="size-4" />
+                  {isAdmin ? <Shield className="size-4 text-purple-600" /> : <User className="size-4" />}
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
+                    <span className="truncate font-semibold flex items-center gap-2">
                       {user ? 'Signed In' : 'Guest'}
+                      {isAdmin && <Badge variant="secondary" className="text-xs ml-2 bg-purple-100 text-purple-800">Admin</Badge>}
                     </span>
                     <span className="truncate text-xs">
                       {user ? user.email : 'Sign in to play'}

@@ -7,7 +7,7 @@ import { TriviaInterface } from "@/components/trivia-interface"
 import { CalendarDays } from "lucide-react"
 
 export default function Home() {
-  const { user, loading } = useAuth()
+  const { user, loading, isAdmin } = useAuth()
 
   if (loading) {
     return (
@@ -29,7 +29,7 @@ export default function Home() {
       </div>
 
       {user ? (
-        <TriviaInterface user={user} />
+        <TriviaInterface user={user} isAdmin={isAdmin} />
       ) : (
         <div className="text-center py-12">
           <div className="max-w-md mx-auto">

@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { generateDailyQuestions } from '@/lib/openai'
+import { isUserAdmin } from '@/lib/admin'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated and is an admin
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Unauthorized - Please sign in' 
+      }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Unauthorized - Invalid session' 
+      }, { status: 401 })
+    }
+
+    // Check if user is admin
+    const adminStatus = await isUserAdmin(user.id)
+    if (!adminStatus) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Forbidden - Only admins can generate new trivia games' 
+      }, { status: 403 })
+    }
     // Check if questions already exist for today
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
     
