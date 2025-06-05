@@ -7,9 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
-// Timer configuration (in seconds)
-const QUIZ_TIMER_SECONDS = 60 // 1 minute - easily configurable
-
 // Types for our trivia system
 interface TriviaQuestion {
   id: string
@@ -19,32 +16,69 @@ interface TriviaQuestion {
   category: string
 }
 
+interface TriviaSession {
+  id: string
+  date: string
+  status: string
+  sessionType: string
+  category?: string
+  timerDuration: number
+}
+
+interface UserParticipation {
+  id: string
+  status: string
+  score: number
+  totalQuestions: number
+  correctAnswers: number
+  timeTaken?: number
+  startedAt: string
+  completedAt?: string
+}
+
+interface SessionResults {
+  participation: UserParticipation
+  responses: {
+    questionId: string
+    question: string
+    category: string
+    options: string[]
+    userAnswer: string
+    correctAnswer: string
+    isCorrect: boolean
+    answeredAt: string
+  }[]
+}
+
 interface TriviaInterfaceProps {
   user: any
   isAdmin?: boolean
 }
 
 export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps) {
-  const [gameState, setGameState] = useState<'waiting' | 'loading' | 'playing' | 'complete'>('waiting')
+  const [gameState, setGameState] = useState<'waiting' | 'loading' | 'playing' | 'complete' | 'already_completed'>('waiting')
+  const [session, setSession] = useState<TriviaSession | null>(null)
   const [questions, setQuestions] = useState<TriviaQuestion[]>([])
   const [answers, setAnswers] = useState<{[key: string]: string}>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [timeRemaining, setTimeRemaining] = useState(QUIZ_TIMER_SECONDS)
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const [timerExpired, setTimerExpired] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [results, setResults] = useState<{
-    score: number
-    correctAnswers: number
-    feedback: {questionId: string, isCorrect: boolean, correctAnswer: string}[]
-    timeExpired?: boolean
-  } | null>(null)
+  const [sessionResults, setSessionResults] = useState<SessionResults | null>(null)
+  const [hasCompletedToday, setHasCompletedToday] = useState(false)
+  const [startTime, setStartTime] = useState<Date | null>(null)
+
+  // Check session status on component mount
+  useEffect(() => {
+    checkTodaysSessionStatus()
+  }, [])
 
   // Timer effect - only runs when playing
   useEffect(() => {
     if (gameState !== 'playing' || timeRemaining <= 0) return
 
     const timer = setInterval(() => {
-      setTimeRemaining(prev => {
+      setTimeRemaining((prev: number) => {
         if (prev <= 1) {
           setTimerExpired(true)
           return 0
@@ -75,59 +109,136 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
     return 'text-red-600' // Red when ≤30 sec
   }
 
-  const startTodaysTrivia = async () => {
+  const checkTodaysSessionStatus = async () => {
     setGameState('loading')
     setError(null)
     
     try {
-      // First, try to fetch today's questions
-      const response = await fetch('/api/todays-questions')
-      const data = await response.json()
-      
-      if (data.success) {
-        // Questions exist, start the game
-        setQuestions(data.questions)
-        setGameState('playing')
-        setTimeRemaining(QUIZ_TIMER_SECONDS)
-        setTimerExpired(false)
+      // Get auth token for API calls
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      if (!authSession?.access_token) {
+        setError('Please sign in to continue')
+        setGameState('waiting')
         return
       }
-      
-      // No questions found, generate new ones
-      console.log('No questions found, generating new ones...')
-      
-      // Get auth token for admin verification
-      const { data: { session } } = await supabase.auth.getSession()
+
       const headers: HeadersInit = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authSession.access_token}`
       }
-      
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
+
+      const response = await fetch('/api/user-session-status', { headers })
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to check session status')
       }
-      
-      const generateResponse = await fetch('/api/generate-questions', {
-        method: 'POST',
-        headers
-      })
-      const generateData = await generateResponse.json()
-      
-      if (!generateData.success) {
-        throw new Error(generateData.error || generateData.message || 'Failed to generate questions')
+
+      if (!data.hasSession) {
+        // No session exists for today
+        setGameState('waiting')
+        return
       }
-      
-      // Fetch the newly generated questions
-      const newQuestionsResponse = await fetch('/api/todays-questions')
-      const newQuestionsData = await newQuestionsResponse.json()
-      
-      if (!newQuestionsData.success) {
-        throw new Error('Failed to fetch generated questions')
+
+      if (data.hasParticipated && data.isCompleted) {
+        // User has already completed today's trivia
+        setHasCompletedToday(true)
+        setSessionResults(data.results)
+        setGameState('already_completed')
+        return
       }
-      
-      setQuestions(newQuestionsData.questions)
-      setGameState('playing')
-      setTimeRemaining(QUIZ_TIMER_SECONDS)
-      setTimerExpired(false)
+
+      // Session exists and user hasn't completed it yet
+      setSession(data.session)
+      setGameState('waiting')
+
+    } catch (err) {
+      console.error('Error checking session status:', err)
+      setError(err instanceof Error ? err.message : 'Failed to check session status')
+      setGameState('waiting')
+    }
+  }
+
+  const startTodaysTrivia = async () => {
+    if (hasCompletedToday) {
+      // User has already completed today's trivia, show results
+      setGameState('already_completed')
+      return
+    }
+
+    setGameState('loading')
+    setError(null)
+    
+    try {
+      // If we don't have a session yet, try to create or get one
+      if (!session) {
+        // First, try to fetch today's questions/session
+        const response = await fetch('/api/todays-questions')
+        const data = await response.json()
+        
+        if (data.success) {
+          // Questions exist, start the game
+          setQuestions(data.questions)
+          setSession(data.session)
+          setGameState('playing')
+          setTimeRemaining(data.session?.timerDuration || 300)
+          setTimerExpired(false)
+          setStartTime(new Date())
+          return
+        }
+        
+        // No questions found, generate new ones (admin only)
+        console.log('No questions found, generating new ones...')
+        
+        // Get auth token for admin verification
+        const { data: { session: authSession } } = await supabase.auth.getSession()
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json'
+        }
+        
+        if (authSession?.access_token) {
+          headers['Authorization'] = `Bearer ${authSession.access_token}`
+        }
+        
+        const generateResponse = await fetch('/api/generate-questions', {
+          method: 'POST',
+          headers
+        })
+        const generateData = await generateResponse.json()
+        
+        if (!generateData.success) {
+          throw new Error(generateData.error || generateData.message || 'Failed to generate questions')
+        }
+        
+        // Fetch the newly generated questions
+        const newQuestionsResponse = await fetch('/api/todays-questions')
+        const newQuestionsData = await newQuestionsResponse.json()
+        
+        if (!newQuestionsData.success) {
+          throw new Error('Failed to fetch generated questions')
+        }
+        
+        setQuestions(newQuestionsData.questions)
+        setSession(newQuestionsData.session)
+        setGameState('playing')
+        setTimeRemaining(newQuestionsData.session?.timerDuration || 300)
+        setTimerExpired(false)
+        setStartTime(new Date())
+      } else {
+        // We have a session, fetch its questions and start
+        const response = await fetch('/api/todays-questions')
+        const data = await response.json()
+        
+        if (!data.success) {
+          throw new Error('Failed to fetch questions for existing session')
+        }
+        
+        setQuestions(data.questions)
+        setGameState('playing')
+        setTimeRemaining(session.timerDuration)
+        setTimerExpired(false)
+        setStartTime(new Date())
+      }
       
     } catch (err) {
       console.error('Error starting trivia:', err)
@@ -145,56 +256,77 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
   }
 
   const handleFinalSubmit = async (autoSubmit = false) => {
-    if (isSubmitting || gameState !== 'playing') return
+    if (isSubmitting || gameState !== 'playing' || !session) return
 
     setIsSubmitting(true)
     setGameState('complete')
 
     try {
-      let totalScore = 0
-      let correctCount = 0
-      const feedback = []
+      // Calculate time taken
+      const timeTaken = startTime ? Math.floor((new Date().getTime() - startTime.getTime()) / 1000) : undefined
 
-      // Calculate score and prepare feedback
-      for (const question of questions) {
-        const userAnswer = answers[question.id]
-        const isCorrect = userAnswer === question.correctAnswer
-        
-        if (isCorrect) {
-          totalScore += 1 // 1 point per correct answer
-          correctCount += 1
-        }
+      // Prepare responses for submission
+      const responses = Object.entries(answers).map(([questionId, userAnswer]) => ({
+        questionId,
+        userAnswer
+      }))
 
-        feedback.push({
-          questionId: question.id,
-          isCorrect,
-          correctAnswer: question.correctAnswer
-        })
+      // Get auth token
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (authSession?.access_token) {
+        headers['Authorization'] = `Bearer ${authSession.access_token}`
       }
 
-      // Store final results in Supabase
-      const { error } = await supabase
-        .from('scores')
-        .upsert({
-          user_id: user.id,
-          user_name: user.email || 'Unknown',
-          score: totalScore,
-          games_played: 1,
-          games_won: correctCount === questions.length ? 1 : 0,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
+      // Submit to new API endpoint
+      const response = await fetch('/api/submit-responses', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          sessionId: session.id,
+          responses,
+          timeTaken,
+          autoSubmit
         })
-
-      if (error) throw error
-
-      // Set results
-      setResults({
-        score: totalScore,
-        correctAnswers: correctCount,
-        feedback,
-        timeExpired: autoSubmit
       })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to submit responses')
+      }
+
+      // Set results and mark as completed
+      setSessionResults({
+        participation: {
+          id: '',
+          status: 'completed',
+          score: data.results.score,
+          totalQuestions: data.results.totalQuestions,
+          correctAnswers: data.results.correctAnswers,
+          timeTaken: data.results.timeTaken,
+          startedAt: startTime?.toISOString() || '',
+          completedAt: new Date().toISOString()
+        },
+        responses: data.results.feedback.map((f: any) => {
+          const question = questions.find(q => q.id === f.questionId)!
+          return {
+            questionId: f.questionId,
+            question: question.question,
+            category: question.category,
+            options: question.options,
+            userAnswer: answers[f.questionId] || '',
+            correctAnswer: f.correctAnswer,
+            isCorrect: f.isCorrect,
+            answeredAt: new Date().toISOString()
+          }
+        })
+      })
+
+      setHasCompletedToday(true)
 
     } catch (err) {
       console.error('Error submitting trivia:', err)
@@ -218,126 +350,75 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
-  // Waiting state - show start button
-  if (gameState === 'waiting') {
-    return (
-      <div className="w-full max-w-2xl mx-auto space-y-6">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-md">
-              Welcome, {user.email}!
-              {isAdmin && <Badge className="ml-2 bg-purple-100 text-purple-800">Admin</Badge>}
-            </CardTitle>
-            <CardDescription>
-              {isAdmin 
-                ? "As an admin, you can start today's trivia game or generate new questions if none exist yet."
-                : "Ready to test your knowledge? Click below to start today's trivia challenge!"
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                <strong>Error:</strong> {error}
-                {!isAdmin && error.includes('Forbidden') && (
-                  <p className="mt-2 text-sm">
-                    Only administrators can generate new trivia games. Please wait for an admin to create today's questions.
-                  </p>
-                )}
-              </div>
-            )}
-            <Button 
-              onClick={startTodaysTrivia}
-              size="lg"
-              className="w-full"
-            >
-              🎯 {isAdmin ? 'Start/Generate Today\'s Trivia' : 'Start Today\'s Trivia'}
-            </Button>
-            {isAdmin && (
-              <p className="text-sm text-gray-600 text-center mt-2">
-                If no questions exist for today, this will automatically generate new ones using AI.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Loading state
-  if (gameState === 'loading') {
-    return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-600">Generating today's trivia questions...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Results state
-  if (gameState === 'complete' && results) {
+  // Already completed state - show results
+  if (gameState === 'already_completed' && sessionResults) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Results Summary */}
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">
-              {results.timeExpired ? '⏰ Time Up!' : '🎉 Quiz Complete!'}
+              📊 Today's Trivia Complete!
             </CardTitle>
             <CardDescription className="text-lg">
-              You scored <strong>{results.score}</strong> points ({results.correctAnswers}/{questions.length} correct)
-              {results.timeExpired && (
-                <div className="mt-2 text-amber-600">
-                  <strong>Note:</strong> Quiz was auto-submitted when time expired
+              You already completed today's trivia session.<br/>
+              Your score: <strong>{sessionResults.participation.score}</strong> points 
+              ({sessionResults.participation.correctAnswers}/{sessionResults.participation.totalQuestions} correct)
+              {sessionResults.participation.timeTaken && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Completed in {Math.floor(sessionResults.participation.timeTaken / 60)}m {sessionResults.participation.timeTaken % 60}s
                 </div>
               )}
             </CardDescription>
           </CardHeader>
         </Card>
 
+        {/* Message about one session per day */}
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-amber-800 mb-2">One Trivia Session Per Day</h3>
+              <p className="text-amber-700">
+                Come back tomorrow for a new trivia challenge! Each day features a fresh set of questions.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Detailed Results */}
         <div className="grid gap-4">
-          {questions.map((question, index) => {
-            const userAnswer = answers[question.id]
-            const feedback = results.feedback.find(f => f.questionId === question.id)
-            const isCorrect = feedback?.isCorrect || false
-            const wasAnswered = userAnswer !== undefined
+          {sessionResults.responses.map((response, index) => {
+            const wasAnswered = response.userAnswer !== ''
 
             return (
-              <Card key={question.id} className={`border-2 ${
+              <Card key={response.questionId} className={`border-2 ${
                 !wasAnswered ? 'border-gray-200 bg-gray-50' :
-                isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                response.isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
               }`}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <Badge variant="outline" className={getCategoryColor(question.category)}>
-                      {question.category}
+                    <Badge variant="outline" className={getCategoryColor(response.category)}>
+                      {response.category}
                     </Badge>
                     <div className="text-right">
                       {!wasAnswered ? (
                         <span className="text-gray-500 font-semibold">⏸ Not Answered</span>
-                      ) : isCorrect ? (
+                      ) : response.isCorrect ? (
                         <span className="text-green-600 font-semibold">✓ Correct (+1 pt)</span>
                       ) : (
                         <span className="text-red-600 font-semibold">✗ Incorrect</span>
                       )}
                     </div>
                   </div>
-                  <CardTitle className="text-lg">{question.question}</CardTitle>
+                  <CardTitle className="text-lg">{response.question}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {wasAnswered ? (
                       <>
-                        <p><strong>Your answer:</strong> <span className={isCorrect ? 'text-green-600' : 'text-red-600'}>{userAnswer}</span></p>
-                        {!isCorrect && (
-                          <p><strong>Correct answer:</strong> <span className="text-green-600">{question.correctAnswer}</span></p>
+                        <p><strong>Your answer:</strong> <span className={response.isCorrect ? 'text-green-600' : 'text-red-600'}>{response.userAnswer}</span></p>
+                        {!response.isCorrect && (
+                          <p><strong>Correct answer:</strong> <span className="text-green-600">{response.correctAnswer}</span></p>
                         )}
                       </>
                     ) : (
@@ -358,7 +439,193 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
             </Button>
           </Link>
           <Button variant="outline" size="lg" onClick={() => window.location.reload()}>
-            🔄 Play Again
+            🔄 Check Tomorrow's Trivia
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Waiting state - show start button
+  if (gameState === 'waiting') {
+    return (
+      <div className="w-full max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-md">
+              Welcome, {user.email}!
+              {isAdmin && <Badge className="ml-2 bg-purple-100 text-purple-800">Admin</Badge>}
+            </CardTitle>
+            <CardDescription>
+              {hasCompletedToday 
+                ? "You've already completed today's trivia! Come back tomorrow for new questions."
+                : session
+                ? "Ready to test your knowledge? Click below to start today's trivia challenge!"
+                : isAdmin 
+                ? "As an admin, you can start today's trivia game or generate new questions if none exist yet."
+                : "Ready to test your knowledge? Click below to start today's trivia challenge!"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <strong>Error:</strong> {error}
+                {!isAdmin && error.includes('Forbidden') && (
+                  <p className="mt-2 text-sm">
+                    Only administrators can generate new trivia games. Please wait for an admin to create today's questions.
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {!hasCompletedToday && (
+              <>
+                <Button 
+                  onClick={startTodaysTrivia}
+                  size="lg"
+                  className="w-full"
+                  disabled={hasCompletedToday}
+                >
+                  🎯 {isAdmin ? 'Start/Generate Today\'s Trivia' : 'Start Today\'s Trivia'}
+                </Button>
+                {isAdmin && !session && (
+                  <p className="text-sm text-gray-600 text-center mt-2">
+                    If no questions exist for today, this will automatically generate new ones using AI.
+                  </p>
+                )}
+                {session && (
+                  <p className="text-sm text-blue-600 text-center mt-2">
+                    Today's trivia session is ready! Timer: {Math.floor(session.timerDuration / 60)} minutes
+                    {session.category && ` | Category: ${session.category}`}
+                  </p>
+                )}
+              </>
+            )}
+
+            {hasCompletedToday && (
+              <Button 
+                onClick={() => setGameState('already_completed')}
+                size="lg"
+                className="w-full"
+                variant="outline"
+              >
+                📊 View Today's Results
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (gameState === 'loading') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-600">
+                {session ? 'Loading today\'s trivia questions...' : 'Generating today\'s trivia questions...'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Results state (after completing)
+  if (gameState === 'complete' && sessionResults) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Results Summary */}
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">
+              🎉 Quiz Complete!
+            </CardTitle>
+            <CardDescription className="text-lg">
+              You scored <strong>{sessionResults.participation.score}</strong> points 
+              ({sessionResults.participation.correctAnswers}/{sessionResults.participation.totalQuestions} correct)
+              {sessionResults.participation.timeTaken && (
+                <div className="mt-2 text-gray-600">
+                  Completed in {Math.floor(sessionResults.participation.timeTaken / 60)}m {sessionResults.participation.timeTaken % 60}s
+                </div>
+              )}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        {/* One session per day message */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">That's it for today!</h3>
+              <p className="text-blue-700">
+                You can only take the trivia once per day. Come back tomorrow for new questions!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Detailed Results */}
+        <div className="grid gap-4">
+          {sessionResults.responses.map((response, index) => {
+            const wasAnswered = response.userAnswer !== ''
+
+            return (
+              <Card key={response.questionId} className={`border-2 ${
+                !wasAnswered ? 'border-gray-200 bg-gray-50' :
+                response.isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+              }`}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <Badge variant="outline" className={getCategoryColor(response.category)}>
+                      {response.category}
+                    </Badge>
+                    <div className="text-right">
+                      {!wasAnswered ? (
+                        <span className="text-gray-500 font-semibold">⏸ Not Answered</span>
+                      ) : response.isCorrect ? (
+                        <span className="text-green-600 font-semibold">✓ Correct (+1 pt)</span>
+                      ) : (
+                        <span className="text-red-600 font-semibold">✗ Incorrect</span>
+                      )}
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg">{response.question}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {wasAnswered ? (
+                      <>
+                        <p><strong>Your answer:</strong> <span className={response.isCorrect ? 'text-green-600' : 'text-red-600'}>{response.userAnswer}</span></p>
+                        {!response.isCorrect && (
+                          <p><strong>Correct answer:</strong> <span className="text-green-600">{response.correctAnswer}</span></p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-gray-500">No answer provided (time expired)</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center">
+          <Link href="/leaderboard">
+            <Button size="lg">
+              🏆 View Leaderboard
+            </Button>
+          </Link>
+          <Button variant="outline" size="lg" onClick={() => window.location.reload()}>
+            🔄 Tomorrow's Trivia
           </Button>
         </div>
       </div>
@@ -377,6 +644,11 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
             <div></div> {/* Spacer */}
             <div className="text-center">
               <CardTitle className="text-2xl">Today's Trivia</CardTitle>
+              {session?.category && (
+                <Badge className="mt-2" variant="outline">
+                  {session.category}
+                </Badge>
+              )}
             </div>
             <div className="text-right">
               <div className="text-xs text-gray-500 mb-1">Time Left</div>
