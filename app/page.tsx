@@ -20,7 +20,7 @@ export default function Home() {
   return (
     <div className="p-6">
       {/* Page Header */}
-      <div className="mb-8 max-w-4xl mx-auto">
+      <div className="mb-8 w-full mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
           <CalendarDays className="size-10" />
           Vertice Trivia

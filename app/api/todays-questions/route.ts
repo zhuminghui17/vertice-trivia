@@ -5,10 +5,29 @@ export async function GET(request: NextRequest) {
   try {
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
     
+    // First, check if there's a trivia session for today
+    const { data: session, error: sessionError } = await supabase
+      .from('trivia_sessions')
+      .select('*')
+      .eq('date', today)
+      .single()
+
+    if (sessionError && sessionError.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw new Error(`Database error: ${sessionError.message}`)
+    }
+
+    if (!session) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'No trivia session found for today. Generate new questions first.' 
+      }, { status: 404 })
+    }
+
+    // Get the questions for this session
     const { data: questions, error } = await supabase
       .from('questions')
       .select('*')
-      .eq('date', today)
+      .in('id', session.question_ids)
       .order('generated_at', { ascending: true })
     
     if (error) {
@@ -18,10 +37,10 @@ export async function GET(request: NextRequest) {
     if (!questions || questions.length === 0) {
       return NextResponse.json({ 
         success: false, 
-        message: 'No questions found for today. Generate new questions first.' 
+        message: 'No questions found for today\'s session.' 
       }, { status: 404 })
     }
-    
+
     // Parse the options JSON for each question
     const formattedQuestions = questions.map(q => ({
       id: q.id,
@@ -31,13 +50,21 @@ export async function GET(request: NextRequest) {
       category: q.category,
       date: q.date
     }))
-    
+
     return NextResponse.json({ 
       success: true, 
       questions: formattedQuestions,
+      session: {
+        id: session.id,
+        date: session.date,
+        status: session.status,
+        sessionType: session.session_type,
+        category: session.category,
+        timerDuration: session.timer_duration
+      },
       count: formattedQuestions.length
     })
-    
+
   } catch (error) {
     console.error('Error fetching questions:', error)
     return NextResponse.json({ 

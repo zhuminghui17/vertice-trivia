@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       category: q.category
     }))
     
-    const { data, error } = await supabase
+    const { data: questionData, error } = await supabase
       .from('questions')
       .insert(questionsToInsert)
       .select()
@@ -79,13 +79,34 @@ export async function POST(request: NextRequest) {
     if (error) {
       throw new Error(`Failed to save questions: ${error.message}`)
     }
+
+    // Create a trivia session for today with the generated questions
+    const questionIds = questionData.map(q => q.id)
     
-    console.log(`✅ Successfully saved ${data.length} questions for ${today}`)
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('trivia_sessions')
+      .insert({
+        date: today,
+        question_ids: questionIds,
+        status: 'active',
+        session_type: 'daily',
+        timer_duration: 120 // 2 minutes default
+      })
+      .select()
+      .single()
+
+    if (sessionError) {
+      console.error('Failed to create trivia session:', sessionError)
+      // Don't fail the whole operation, just log the error
+    }
+    
+    console.log(`✅ Successfully saved ${questionData.length} questions and created session for ${today}`)
     
     return NextResponse.json({ 
       success: true, 
-      message: `Generated ${data.length} questions for today using AI`,
-      questions: data
+      message: `Generated ${questionData.length} questions for today using AI`,
+      questions: questionData,
+      session: sessionData
     })
     
   } catch (error) {
