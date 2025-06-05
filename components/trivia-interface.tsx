@@ -221,7 +221,7 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
   // Waiting state - show start button
   if (gameState === 'waiting') {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="w-full max-w-2xl mx-auto space-y-6">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-md">
