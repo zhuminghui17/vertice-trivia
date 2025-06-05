@@ -353,40 +353,22 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
   // Already completed state - show results
   if (gameState === 'already_completed' && sessionResults) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Results Summary */}
-        <Card className="border-blue-200 bg-blue-50">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              📊 Today's Trivia Complete!
-            </CardTitle>
-            <CardDescription className="text-lg">
-              You already completed today's trivia session.<br/>
-              Your score: <strong>{sessionResults.participation.score}</strong> points 
-              ({sessionResults.participation.correctAnswers}/{sessionResults.participation.totalQuestions} correct)
-              {sessionResults.participation.timeTaken && (
-                <div className="mt-2 text-sm text-gray-600">
-                  Completed in {Math.floor(sessionResults.participation.timeTaken / 60)}m {sessionResults.participation.timeTaken % 60}s
-                </div>
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="text-center py-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-lg font-semibold text-blue-800">📊 Today's Trivia Complete!</p>
+          <p className="text-sm text-blue-700">
+            Your score: <strong>{sessionResults.participation.score}</strong> points
+          </p>
+        </div>
 
         {/* Message about one session per day */}
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-amber-800 mb-2">One Trivia Session Per Day</h3>
-              <p className="text-amber-700">
-                Come back tomorrow for a new trivia challenge! Each day features a fresh set of questions.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-4 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="text-sm text-amber-700">Come back tomorrow for new questions!</p>
+        </div>
 
         {/* Detailed Results */}
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sessionResults.responses.map((response, index) => {
             const wasAnswered = response.userAnswer !== ''
 
@@ -410,7 +392,7 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
                       )}
                     </div>
                   </div>
-                  <CardTitle className="text-lg">{response.question}</CardTitle>
+                  <CardTitle className="text">{response.question}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -429,18 +411,6 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
               </Card>
             )
           })}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
-          <Link href="/leaderboard">
-            <Button size="lg">
-              🏆 View Leaderboard
-            </Button>
-          </Link>
-          <Button variant="outline" size="lg" onClick={() => window.location.reload()}>
-            🔄 Check Tomorrow's Trivia
-          </Button>
         </div>
       </div>
     )
@@ -540,39 +510,23 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
   // Results state (after completing)
   if (gameState === 'complete' && sessionResults) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="w-full mx-auto space-y-6">
         {/* Results Summary */}
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              🎉 Quiz Complete!
-            </CardTitle>
-            <CardDescription className="text-lg">
-              You scored <strong>{sessionResults.participation.score}</strong> points 
-              ({sessionResults.participation.correctAnswers}/{sessionResults.participation.totalQuestions} correct)
-              {sessionResults.participation.timeTaken && (
-                <div className="mt-2 text-gray-600">
-                  Completed in {Math.floor(sessionResults.participation.timeTaken / 60)}m {sessionResults.participation.timeTaken % 60}s
-                </div>
-              )}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="text-center py-4 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-lg font-semibold text-green-800">🎉 Quiz Complete!</p>
+          <p className="text-sm text-green-700">
+            You scored <strong>{sessionResults.participation.score}</strong> points 
+            ({sessionResults.participation.correctAnswers}/{sessionResults.participation.totalQuestions} correct)
+          </p>
+        </div>
 
         {/* One session per day message */}
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">That's it for today!</h3>
-              <p className="text-blue-700">
-                You can only take the trivia once per day. Come back tomorrow for new questions!
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center py-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-700">Come back tomorrow for new questions!</p>
+        </div>
 
         {/* Detailed Results */}
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sessionResults.responses.map((response, index) => {
             const wasAnswered = response.userAnswer !== ''
 
@@ -616,18 +570,6 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
             )
           })}
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
-          <Link href="/leaderboard">
-            <Button size="lg">
-              🏆 View Leaderboard
-            </Button>
-          </Link>
-          <Button variant="outline" size="lg" onClick={() => window.location.reload()}>
-            🔄 Tomorrow's Trivia
-          </Button>
-        </div>
       </div>
     )
   }
@@ -636,7 +578,7 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
   const allQuestionsAnswered = Object.keys(answers).length === questions.length
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header with Timer */}
       <Card>
         <CardHeader className="text-center">
@@ -679,7 +621,7 @@ export function TriviaInterface({ user, isAdmin = false }: TriviaInterfaceProps)
       </div>
 
       {/* All Questions */}
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {questions.map((question, index) => (
           <Card key={question.id} className="w-full">
             <CardHeader>
