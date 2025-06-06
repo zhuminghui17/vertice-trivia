@@ -108,10 +108,13 @@ export const columns: ColumnDef<Question>[] = [
       return (
         <HoverCard>
           <HoverCardTrigger asChild>
-            <Button variant="ghost" className="h-auto p-1 text-sm font-normal">
-              <span className="text-muted-foreground">
-                {options.length} options
-              </span>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="h-8 px-3 text-sm font-medium border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer transition-colors"
+            >
+              <Eye className="mr-1 h-3 w-3" />
+              {options.length} options
             </Button>
           </HoverCardTrigger>
           <HoverCardContent className="w-80">
