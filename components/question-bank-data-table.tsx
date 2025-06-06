@@ -41,10 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Question } from "@/types/question"
+import { useUserTimezone } from "@/hooks/use-user-timezone"
 
 const createColumns = (
   revealedAnswers: Set<string>, 
-  toggleReveal: (questionId: string) => void
+  toggleReveal: (questionId: string) => void,
+  formatTimestamp: (timestamp: string | Date, options?: any) => string
 ): ColumnDef<Question>[] => [
   {
     accessorKey: "date",
@@ -61,8 +63,15 @@ const createColumns = (
       )
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue("date"))
-      return <div className="font-medium text-center">{date.toLocaleDateString()}</div>
+      const date = row.getValue("date") as string
+      return (
+        <div className="font-medium text-center">
+          {formatTimestamp(date, { 
+            includeDate: true, 
+            includeTime: false 
+          })}
+        </div>
+      )
     },
   },
   {
@@ -190,10 +199,16 @@ const createColumns = (
       )
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue("generated_at"))
+      const generatedAt = row.getValue("generated_at") as string
       return (
         <div className="text-sm text-muted-foreground">
-          {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {formatTimestamp(generatedAt, { 
+            includeDate: true, 
+            includeTime: true, 
+            includeSeconds: false,
+            use12Hour: true,
+            includeTimezone: true
+          })}
         </div>
       )
     },
@@ -249,6 +264,8 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [revealedAnswers, setRevealedAnswers] = React.useState<Set<string>>(new Set())
+  
+  const { formatTimestamp } = useUserTimezone()
 
   const toggleReveal = (questionId: string) => {
     setRevealedAnswers(prev => {
@@ -262,7 +279,7 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
     })
   }
 
-  const columns = createColumns(revealedAnswers, toggleReveal)
+  const columns = createColumns(revealedAnswers, toggleReveal, formatTimestamp)
 
   const table = useReactTable({
     data,
