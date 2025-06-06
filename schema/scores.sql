@@ -8,7 +8,7 @@ create table public.scores (
     score integer null default 0,
     games_played integer null default 0,
     games_won integer null default 0,
-    updated_at timestamp without time zone null default now(),
+    updated_at timestamp with time zone null default timezone ('America/New_York'::text, now()),
     constraint scores_pkey primary key (user_id)
   ) TABLESPACE pg_default;
 

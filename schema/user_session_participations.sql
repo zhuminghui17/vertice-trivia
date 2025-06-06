@@ -10,7 +10,7 @@ CREATE TABLE public.user_session_participations (
   total_questions INTEGER NOT NULL DEFAULT 0,
   correct_answers INTEGER NOT NULL DEFAULT 0,
   time_taken INTEGER, -- in seconds
-  started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/New_York'::text, now()),
   completed_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT user_session_participations_pkey PRIMARY KEY (id),
   CONSTRAINT unique_user_session_participation UNIQUE (user_id, session_id),

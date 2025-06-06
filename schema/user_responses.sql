@@ -8,7 +8,7 @@ CREATE TABLE public.user_responses (
   question_id UUID NOT NULL,
   user_answer TEXT,
   is_correct BOOLEAN NOT NULL DEFAULT FALSE,
-  answered_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  answered_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/New_York'::text, now()),
   CONSTRAINT user_responses_pkey PRIMARY KEY (id),
   CONSTRAINT unique_user_question_response UNIQUE (user_id, session_id, question_id),
   CONSTRAINT user_responses_session_fkey FOREIGN KEY (session_id) REFERENCES public.trivia_sessions (id) ON DELETE CASCADE,
