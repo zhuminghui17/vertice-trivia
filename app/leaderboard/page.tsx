@@ -76,14 +76,6 @@ export default function Leaderboard() {
       {/* Leaderboard Content */}
       {!loading && !error && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-900">
-              Top Players
-            </CardTitle>
-            <CardDescription>
-              {scores.length} {scores.length === 1 ? 'player' : 'players'} ranked by score
-            </CardDescription>
-          </CardHeader>
           <CardContent>
             {scores.length === 0 ? (
               <div className="text-center py-12">
