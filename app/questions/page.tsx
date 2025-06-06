@@ -64,14 +64,6 @@ export default function QuestionsPage() {
       {/* Questions Content */}
       {!loading && !error && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-900">
-              All Questions
-            </CardTitle>
-            <CardDescription>
-              {questions.length} {questions.length === 1 ? 'question' : 'questions'} in the question bank
-            </CardDescription>
-          </CardHeader>
           <CardContent>
             {questions.length === 0 ? (
               <div className="text-center py-12">
