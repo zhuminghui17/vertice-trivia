@@ -401,12 +401,6 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
           </Button>
         </div>
       </div>
-      
-      {/* Stats */}
-      <div className="text-sm text-muted-foreground">
-        Page {table.getState().pagination.pageIndex + 1} of{" "}
-        {table.getPageCount()} • Total {data.length} questions
-      </div>
     </div>
   )
 } 
