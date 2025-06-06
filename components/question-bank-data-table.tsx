@@ -42,7 +42,10 @@ import {
 } from "@/components/ui/table"
 import { Question } from "@/types/question"
 
-export const columns: ColumnDef<Question>[] = [
+const createColumns = (
+  revealedAnswers: Set<string>, 
+  toggleReveal: (questionId: string) => void
+): ColumnDef<Question>[] => [
   {
     accessorKey: "date",
     header: ({ column }) => {
@@ -113,7 +116,6 @@ export const columns: ColumnDef<Question>[] = [
               size="sm"
               className="h-8 px-3 text-sm font-medium border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer transition-colors"
             >
-              <Eye className="mr-1 h-3 w-3" />
               {options.length} options
             </Button>
           </HoverCardTrigger>
@@ -145,10 +147,32 @@ export const columns: ColumnDef<Question>[] = [
     header: "Correct Answer",
     cell: ({ row }) => {
       const correctAnswer = row.getValue("correct_answer") as string
+      const questionId = row.original.id
+      const isRevealed = revealedAnswers.has(questionId)
+      
       return (
-        <div className="font-medium text-green-700 bg-green-50 px-2 py-1 rounded text-sm max-w-32 truncate" title={correctAnswer}>
-          {correctAnswer}
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleReveal(questionId)}
+          className={`h-8 px-2 text-sm font-medium transition-all cursor-pointer ${
+            isRevealed 
+              ? "text-green-700 bg-green-50 hover:bg-green-100" 
+              : "text-gray-500 bg-gray-100 hover:bg-gray-200"
+          }`}
+        >
+          {isRevealed ? (
+            <span className="flex items-center">
+              <Eye className="mr-1 h-3 w-3" />
+              {correctAnswer}
+            </span>
+          ) : (
+            <span className="flex items-center">
+              <span className="mr-1">🔒</span>
+              Click to reveal
+            </span>
+          )}
+        </Button>
       )
     },
   },
@@ -224,6 +248,21 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
   ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [revealedAnswers, setRevealedAnswers] = React.useState<Set<string>>(new Set())
+
+  const toggleReveal = (questionId: string) => {
+    setRevealedAnswers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId)
+      } else {
+        newSet.add(questionId)
+      }
+      return newSet
+    })
+  }
+
+  const columns = createColumns(revealedAnswers, toggleReveal)
 
   const table = useReactTable({
     data,
