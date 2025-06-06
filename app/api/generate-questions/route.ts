@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const questionsToInsert = generatedQuestions.map(q => ({
       date: today,
       question: q.question,
-      options: JSON.stringify(q.options),
+      options: q.options, // JSONB column accepts array directly, no need to stringify
       correct_answer: q.correctAnswer,
       category: q.category
     }))
