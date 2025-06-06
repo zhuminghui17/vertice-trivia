@@ -101,12 +101,10 @@ const createColumns = (
     header: "Question",
     cell: ({ row }) => {
       const question = row.getValue("question") as string
-      // Truncate long questions for display
-      const truncated = question.length > 100 ? question.slice(0, 100) + "..." : question
       return (
-        <div className="max-w-md">
-          <p className="text-sm leading-relaxed" title={question}>
-            {truncated}
+        <div className="min-w-0 max-w-sm pr-4">
+          <p className="text-sm leading-relaxed break-words whitespace-normal">
+            {question}
           </p>
         </div>
       )
@@ -182,34 +180,6 @@ const createColumns = (
             </span>
           )}
         </Button>
-      )
-    },
-  },
-  {
-    accessorKey: "generated_at",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Generated
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
-    cell: ({ row }) => {
-      const generatedAt = row.getValue("generated_at") as string
-      return (
-        <div className="text-sm text-muted-foreground">
-          {formatTimestamp(generatedAt, { 
-            includeDate: true, 
-            includeTime: true, 
-            includeSeconds: false,
-            use12Hour: true,
-            includeTimezone: true
-          })}
-        </div>
       )
     },
   },
@@ -380,9 +350,10 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="align-top"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="align-center py-4">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -429,12 +400,6 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
             Next
           </Button>
         </div>
-      </div>
-      
-      {/* Stats */}
-      <div className="text-sm text-muted-foreground">
-        Page {table.getState().pagination.pageIndex + 1} of{" "}
-        {table.getPageCount()} • Total {data.length} questions
       </div>
     </div>
   )
