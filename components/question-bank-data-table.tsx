@@ -18,6 +18,11 @@ import { ArrowUpDown, ChevronDown, MoreHorizontal, Eye, Copy, Calendar } from "l
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -101,11 +106,33 @@ export const columns: ColumnDef<Question>[] = [
     cell: ({ row }) => {
       const options = row.getValue("options") as string[]
       return (
-        <div className="text-sm">
-          <span className="text-muted-foreground">
-            {options.length} options
-          </span>
-        </div>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button variant="ghost" className="h-auto p-1 text-sm font-normal">
+              <span className="text-muted-foreground">
+                {options.length} options
+              </span>
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Answer Options</h4>
+              <div className="space-y-1">
+                {options.map((option, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center space-x-2 text-sm p-2 rounded-md bg-gray-50 hover:bg-gray-100"
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className="text-gray-700">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       )
     },
     enableSorting: false,
