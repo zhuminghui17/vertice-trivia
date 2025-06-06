@@ -33,25 +33,53 @@ export async function generateDailyQuestions(): Promise<GeneratedQuestion[]> {
   console.log('🤖 Starting OpenAI question generation...')
 
   try {
-    const prompt = `Generate 5 multiple choice medium-difficulty trivia questions for a daily quiz. Each question should:
-    
-1. Be from a different category (Geography, Technology, History, Science, Sports, Entertainment, etc.)
-2. Have exactly 4 answer options
-3. Be moderate difficulty - not too easy, not too hard
-4. Have clear, unambiguous correct answers
-5. Be appropriate for a general audience
+    const prompt = `Generate 5 challenging yet fair trivia questions for a daily quiz. Create questions that make people think, not just recall basic facts.
 
-Format your response as a JSON array with this exact structure:
+REQUIREMENTS:
+1. DIFFICULTY: Medium-Hard (6/10 difficulty) - should challenge educated adults
+2. CATEGORIES: Choose from these diverse categories:
+   - Science & Technology (space, physics, biology, computing, innovations)
+   - History & Politics (lesser-known events, historical figures, political systems)
+   - Arts & Culture (literature, music, art movements, cultural phenomena)
+   - Geography & Nature (unusual places, geological features, ecosystems)
+   - Sports & Entertainment (records, behind-the-scenes facts, industry knowledge)
+   - Current Events & Society (recent developments, social movements, economics)
+
+3. QUESTION TYPES - Mix these styles:
+   - Cause & Effect: "What phenomenon causes..." 
+   - Lesser-known Facts: "Which country was the first to..."
+   - Technical Details: "In computing, what does..."
+   - Historical Context: "What event led to..."
+   - Scientific Principles: "What happens when..."
+
+4. AVOID these overused topics:
+   - Capital cities of major countries (Tokyo, Paris, London, etc.)
+   - Basic historical dates (1776, 1492, etc.)
+   - Common scientific facts (speed of light, etc.)
+   - Basic pop culture (Disney characters, etc.)
+
+5. ANSWER OPTIONS:
+   - Make all 4 options plausible to someone unfamiliar with the topic
+   - Avoid obvious wrong answers
+   - Include related but incorrect options that might confuse someone with partial knowledge
+
+EXAMPLES of the quality I want:
+- "What programming concept allows a function to call itself?"
+- "Which treaty ended the Thirty Years' War in 1648?"
+- "What element gives Neptune its distinctive blue color?"
+- "In economics, what term describes the point where supply equals demand?"
+
+Format as valid JSON array:
 [
   {
-    "question": "What is the capital of Japan?",
-    "options": ["Tokyo", "Kyoto", "Osaka", "Hiroshima"],
-    "correctAnswer": "Tokyo",
-    "category": "Geography"
+    "question": "Your challenging question here",
+    "options": ["Correct answer", "Plausible wrong 1", "Plausible wrong 2", "Plausible wrong 3"],
+    "correctAnswer": "Correct answer",
+    "category": "Specific category"
   }
 ]
 
-Make sure the JSON is valid and each question is unique and interesting.`
+Generate unique, thought-provoking questions that will genuinely challenge and educate players.`
 
     console.log('📡 Sending request to OpenAI...')
     const completion = await openai.chat.completions.create({
