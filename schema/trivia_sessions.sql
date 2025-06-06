@@ -12,8 +12,8 @@ CREATE TABLE public.trivia_sessions (
   total_participants INTEGER DEFAULT 0, -- Track how many users participated
   highest_score INTEGER DEFAULT 0, -- Track the winning score
   winner_user_ids UUID[], -- Array of user IDs who achieved the highest score (handles ties)
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/New_York'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('America/New_York'::text, now()),
   CONSTRAINT trivia_sessions_pkey PRIMARY KEY (id),
   CONSTRAINT unique_session_per_date UNIQUE (date)
 ) TABLESPACE pg_default;

@@ -3,7 +3,7 @@
 
 create table public.admins (
   user_id uuid not null,
-  created_at timestamp with time zone null default timezone ('utc'::text, now()),
+  created_at timestamp with time zone null default timezone ('America/New_York'::text, now()),
   constraint admins_pkey primary key (user_id),
   constraint admins_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE
 ) TABLESPACE pg_default;

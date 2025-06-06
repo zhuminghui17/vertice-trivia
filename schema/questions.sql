@@ -9,6 +9,6 @@ create table public.questions (
   options jsonb not null,
   correct_answer text not null,
   category text not null,
-  generated_at timestamp without time zone null default now(),
+  generated_at timestamp with time zone null default timezone ('America/New_York'::text, now()),
   constraint questions_pkey primary key (id)
 ) TABLESPACE pg_default;
