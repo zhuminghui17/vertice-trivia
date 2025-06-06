@@ -62,7 +62,7 @@ const createColumns = (
     },
     cell: ({ row }) => {
       const date = new Date(row.getValue("date"))
-      return <div className="font-medium">{date.toLocaleDateString()}</div>
+      return <div className="font-medium text-center">{date.toLocaleDateString()}</div>
     },
   },
   {
