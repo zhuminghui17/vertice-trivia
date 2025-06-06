@@ -229,7 +229,7 @@ interface QuestionBankDataTableProps {
 
 export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "generated_at", desc: true } // Default sort by newest first
+    { id: "date", desc: true } // Default sort by newest first
   ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
