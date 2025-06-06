@@ -18,6 +18,11 @@ import { ArrowUpDown, ChevronDown, MoreHorizontal, Eye, Copy, Calendar } from "l
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -37,7 +42,10 @@ import {
 } from "@/components/ui/table"
 import { Question } from "@/types/question"
 
-export const columns: ColumnDef<Question>[] = [
+const createColumns = (
+  revealedAnswers: Set<string>, 
+  toggleReveal: (questionId: string) => void
+): ColumnDef<Question>[] => [
   {
     accessorKey: "date",
     header: ({ column }) => {
@@ -54,7 +62,7 @@ export const columns: ColumnDef<Question>[] = [
     },
     cell: ({ row }) => {
       const date = new Date(row.getValue("date"))
-      return <div className="font-medium">{date.toLocaleDateString()}</div>
+      return <div className="font-medium text-center">{date.toLocaleDateString()}</div>
     },
   },
   {
@@ -101,11 +109,35 @@ export const columns: ColumnDef<Question>[] = [
     cell: ({ row }) => {
       const options = row.getValue("options") as string[]
       return (
-        <div className="text-sm">
-          <span className="text-muted-foreground">
-            {options.length} options
-          </span>
-        </div>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="h-8 px-3 text-sm font-medium border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 cursor-pointer transition-colors"
+            >
+              {options.length} options
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Answer Options</h4>
+              <div className="space-y-1">
+                {options.map((option, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center space-x-2 text-sm p-2 rounded-md bg-gray-50 hover:bg-gray-100"
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className="text-gray-700">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       )
     },
     enableSorting: false,
@@ -115,10 +147,32 @@ export const columns: ColumnDef<Question>[] = [
     header: "Correct Answer",
     cell: ({ row }) => {
       const correctAnswer = row.getValue("correct_answer") as string
+      const questionId = row.original.id
+      const isRevealed = revealedAnswers.has(questionId)
+      
       return (
-        <div className="font-medium text-green-700 bg-green-50 px-2 py-1 rounded text-sm max-w-32 truncate" title={correctAnswer}>
-          {correctAnswer}
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleReveal(questionId)}
+          className={`h-8 px-2 text-sm font-medium transition-all cursor-pointer ${
+            isRevealed 
+              ? "text-green-700 bg-green-50 hover:bg-green-100" 
+              : "text-gray-500 bg-gray-100 hover:bg-gray-200"
+          }`}
+        >
+          {isRevealed ? (
+            <span className="flex items-center">
+              <Eye className="mr-1 h-3 w-3" />
+              {correctAnswer}
+            </span>
+          ) : (
+            <span className="flex items-center">
+              <span className="mr-1">🔒</span>
+              Click to reveal
+            </span>
+          )}
+        </Button>
       )
     },
   },
@@ -194,6 +248,21 @@ export function QuestionBankDataTable({ data }: QuestionBankDataTableProps) {
   ])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [revealedAnswers, setRevealedAnswers] = React.useState<Set<string>>(new Set())
+
+  const toggleReveal = (questionId: string) => {
+    setRevealedAnswers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId)
+      } else {
+        newSet.add(questionId)
+      }
+      return newSet
+    })
+  }
+
+  const columns = createColumns(revealedAnswers, toggleReveal)
 
   const table = useReactTable({
     data,
